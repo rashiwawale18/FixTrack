@@ -18,7 +18,8 @@ function Field({ label, error, children }) {
 
 function StatusBadge({ status }) {
   const m = { 'Pending Review':'badge-pending','Accepted':'badge-accepted','Assigned':'badge-assigned','In Progress':'badge-inprogress','Resolved':'badge-resolved','Rejected':'badge-rejected' }
-  return <span className={`badge ${m[status]||'badge-pending'}`}>{status}</span>
+  const live = status === 'Pending Review' || status === 'In Progress'
+  return <span className={`badge ${m[status]||'badge-pending'} ${live ? 'badge-live' : ''}`}>{status}</span>
 }
 function PriorityBadge({ priority }) {
   return <span className={`badge priority-${priority?.toLowerCase()}`}>{priority}</span>
@@ -104,7 +105,7 @@ export default function UserPanel({ addIssue }) {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button onClick={() => document.getElementById('report-section')?.scrollIntoView({behavior:'smooth'})}
               className="px-8 py-3 rounded-xl font-black text-base transition-all duration-200 hover:-translate-y-1"
-              style={{ background:'#fff', color:'var(--navy)', boxShadow:'0 4px 18px rgba(0,0,0,0.2)' }}>
+              style={{ background:'#dce6ff', color:'#0f1a2f', boxShadow:'0 4px 18px rgba(0,0,0,0.2)' }}>
               + Report an Issue
             </button>
             <button onClick={() => document.getElementById('track-section')?.scrollIntoView({behavior:'smooth'})}
@@ -124,7 +125,7 @@ export default function UserPanel({ addIssue }) {
           {FEATURES.map((f,i) => (
             <div key={f.title} className="feature-card fade-up" style={{ animationDelay:`${i*0.07}s` }}>
               <div className="text-2xl mb-2">{f.icon}</div>
-              <h3 className="font-black text-sm mb-1" style={{ color:'var(--navy)' }}>{f.title}</h3>
+              <h3 className="font-black text-sm mb-1" style={{ color:'var(--text)' }}>{f.title}</h3>
               <p className="text-xs leading-relaxed" style={{ color:'var(--muted)' }}>{f.desc}</p>
             </div>
           ))}
@@ -133,8 +134,8 @@ export default function UserPanel({ addIssue }) {
 
       {/* ── HOW IT WORKS ── */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 mb-10">
-        <div className="card-flat p-5 sm:p-6">
-          <h2 className="text-base font-black mb-4" style={{ color:'var(--navy)' }}>How It Works</h2>
+        <div className="card-flat p-5 sm:p-6 anim-pop">
+          <h2 className="text-base font-black mb-4" style={{ color:'var(--text)' }}>How It Works</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               { step:'01', title:'Fill the Form',  desc:'Enter your details, describe the issue and select category & priority.' },
@@ -145,7 +146,7 @@ export default function UserPanel({ addIssue }) {
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black text-white flex-shrink-0"
                   style={{ background:'var(--navy)' }}>{s.step}</div>
                 <div>
-                  <p className="font-black text-sm mb-0.5" style={{ color:'var(--navy)' }}>{s.title}</p>
+                  <p className="font-black text-sm mb-0.5" style={{ color:'var(--text)' }}>{s.title}</p>
                   <p className="text-xs leading-relaxed" style={{ color:'var(--muted)' }}>{s.desc}</p>
                 </div>
               </div>
@@ -156,7 +157,7 @@ export default function UserPanel({ addIssue }) {
 
       {/* ── REPORT FORM ── */}
       <section id="report-section" className="max-w-5xl mx-auto px-4 sm:px-6 mb-10">
-        <div className="card-flat overflow-hidden">
+        <div className="card-flat overflow-hidden anim-pop">
           <div className="px-5 sm:px-7 py-4 flex items-center gap-3" style={{ background:'var(--navy)' }}>
             <span className="text-xl">📝</span>
             <div>
@@ -247,7 +248,7 @@ export default function UserPanel({ addIssue }) {
 
       {/* ── TRACK SECTION ── */}
       <section id="track-section" className="max-w-5xl mx-auto px-4 sm:px-6 mb-16">
-        <div className="card-flat overflow-hidden">
+        <div className="card-flat overflow-hidden anim-pop">
           <div className="px-5 sm:px-7 py-4 flex items-center gap-3" style={{ background:'var(--navy)' }}>
             <span className="text-xl">🔍</span>
             <div>
@@ -276,11 +277,11 @@ export default function UserPanel({ addIssue }) {
                     </div>
                   : <div className="flex flex-col gap-3">
                       {trackResults.map(issue => (
-                        <div key={issue.$id} className="card p-4">
+                        <div key={issue.$id} className="card p-4 lift-hover anim-pop">
                           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
                             <div>
                               <span className="mono text-xs" style={{ color:'var(--muted)' }}>{issue.$id.slice(0,8)}</span>
-                              <p className="font-black text-sm mt-0.5" style={{ color:'var(--navy)' }}>{issue.title}</p>
+                              <p className="font-black text-sm mt-0.5" style={{ color:'var(--text)' }}>{issue.title}</p>
                               <p className="text-xs mt-0.5" style={{ color:'var(--muted)' }}>{issue.location} · {issue.department} Dept.</p>
                             </div>
                             <StatusBadge status={issue.status} />

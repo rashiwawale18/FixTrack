@@ -118,19 +118,19 @@ export default function App() {
   }
 
   if (loading) return (
-    <div style={{ minHeight:'100vh', background:'#f2f4f8', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:'14px' }}>
-      <div style={{ width:'42px', height:'42px', borderRadius:'50%', border:'4px solid #d4daea', borderTop:'4px solid #1a2f5e', animation:'spin 0.7s linear infinite' }} />
-      <p style={{ color:'#526080', fontSize:'0.875rem', fontWeight:700 }}>Loading FixTrack...</p>
+    <div style={{ minHeight:'100vh', background:'var(--bg)', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:'14px' }}>
+      <div style={{ width:'42px', height:'42px', borderRadius:'50%', border:'4px solid #2a3a56', borderTop:'4px solid #7ea2ff', animation:'spin 0.7s linear infinite' }} />
+      <p style={{ color:'var(--muted)', fontSize:'0.875rem', fontWeight:700 }}>Loading FixTrack...</p>
       <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
     </div>
   )
 
   if (loadError) return (
-    <div style={{ minHeight:'100vh', background:'#f2f4f8', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px' }}>
-      <div style={{ background:'#fff', border:'1px solid #f0a0a0', borderRadius:'16px', padding:'32px', maxWidth:'440px', textAlign:'center' }}>
+    <div style={{ minHeight:'100vh', background:'var(--bg)', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px' }}>
+      <div style={{ background:'var(--surface)', border:'1px solid #7f3c50', borderRadius:'16px', padding:'32px', maxWidth:'440px', textAlign:'center' }}>
         <div style={{ fontSize:'2.5rem', marginBottom:'12px' }}>⚠️</div>
-        <h2 style={{ fontWeight:900, color:'#18243a', marginBottom:'8px' }}>Connection Error</h2>
-        <p style={{ color:'#526080', fontSize:'0.875rem', lineHeight:1.6 }}>{loadError}</p>
+        <h2 style={{ fontWeight:900, color:'var(--text)', marginBottom:'8px' }}>Connection Error</h2>
+        <p style={{ color:'var(--muted)', fontSize:'0.875rem', lineHeight:1.6 }}>{loadError}</p>
       </div>
     </div>
   )
@@ -139,9 +139,9 @@ export default function App() {
     <div style={{ background:'var(--bg)', minHeight:'100vh' }}>
       <NavBar active={active} onTabChange={handleTabChange} />
       <div className="pt-16">
-        {active==='User'      && <UserPanel      {...props} />}
-        {active==='Admin'     && <AdminPanel     {...props} />}
-        {active==='Assistant' && <AssistantPanel {...props} />}
+        {active==='User'      && <div className="tab-panel-enter"><UserPanel      {...props} /></div>}
+        {active==='Admin'     && <div className="tab-panel-enter"><AdminPanel     {...props} /></div>}
+        {active==='Assistant' && <div className="tab-panel-enter"><AssistantPanel {...props} /></div>}
       </div>
     </div>
   )

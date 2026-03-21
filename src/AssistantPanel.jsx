@@ -4,12 +4,13 @@ import { signupAssistant, loginAssistant, logoutAssistant, getLoggedInAssistant 
 const CATEGORIES = ['Electrical','Plumbing','Mechanical','Electronics','Cleaning']
 const STATUSES   = ['Pending Review','Accepted','Assigned','In Progress','Resolved']
 
-const LC = { bg:'#ede8f8', card:'#e0d8f5', inp:'#d4ccee', border:'#b0a0d8', dark:'#1a1040', muted:'#4a4080', btn:'#251e54' }
-const DC = { bg:'#f2f4f8', surf:'#ffffff', surf2:'#f0f2f8', border:'#d4daea', text:'#18243a', muted:'#526080' }
+const LC = { bg:'#0a101c', card:'#121a2b', inp:'#1a263d', border:'#2a3a56', dark:'#e6ecff', muted:'#9aaaca', btn:'#3f63b8' }
+const DC = { bg:'#0a101c', surf:'#121a2b', surf2:'#1a263d', border:'#2a3a56', text:'#e6ecff', muted:'#9aaaca' }
 
 function SBadge({ status }) {
   const m = { 'Pending Review':'badge-pending','Accepted':'badge-accepted','Assigned':'badge-assigned','In Progress':'badge-inprogress','Resolved':'badge-resolved','Rejected':'badge-rejected' }
-  return <span className={`badge ${m[status]||'badge-pending'}`}>{status}</span>
+  const live = status === 'Pending Review' || status === 'In Progress'
+  return <span className={`badge ${m[status]||'badge-pending'} ${live ? 'badge-live' : ''}`}>{status}</span>
 }
 function PBadge({ priority }) {
   return <span className={`badge priority-${priority?.toLowerCase()}`}>{priority}</span>
@@ -206,7 +207,7 @@ export default function AssistantPanel({ issues, assistants, addAssistant, updat
       {sidebarOpen && <div onClick={()=>setSidebarOpen(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:40 }} />}
 
       {/* Indigo Sidebar */}
-      <aside className="asst-sidebar" style={{ width:'200px', flexShrink:0, display:'flex', flexDirection:'column', padding:'20px 10px', position:'fixed', top:'64px', left:0, height:'calc(100vh - 64px)', zIndex:50, overflowY:'auto', transition:'transform 0.25s ease' }}
+      <aside className="asst-sidebar panel-enter" style={{ width:'200px', flexShrink:0, display:'flex', flexDirection:'column', padding:'20px 10px', position:'fixed', top:'64px', left:0, height:'calc(100vh - 64px)', zIndex:50, overflowY:'auto', transition:'transform 0.25s ease' }}
         ref={el => {
           if (!el) return
           const apply = () => { el.style.transform = window.innerWidth >= 1024 ? 'translateX(0)' : (sidebarOpen ? 'translateX(0)' : 'translateX(-100%)') }
@@ -238,7 +239,7 @@ export default function AssistantPanel({ issues, assistants, addAssistant, updat
       </aside>
 
       {/* Main */}
-      <div style={{ flex:1, minWidth:0, padding:'24px 20px' }} className="lg:ml-[200px]">
+      <div style={{ flex:1, minWidth:0, padding:'24px 20px' }} className="lg:ml-[200px] fade-in">
         <div className="flex items-center gap-3 mb-5 lg:hidden">
           <button onClick={()=>setSidebarOpen(true)} style={{ padding:'7px 12px', borderRadius:'8px', background:DC.surf, border:`1px solid ${DC.border}`, color:DC.text, cursor:'pointer', fontWeight:800 }}>☰</button>
           <h1 style={{ fontSize:'1.1rem', fontWeight:900, color:DC.text }}>{me.category} Issues</h1>
@@ -252,10 +253,10 @@ export default function AssistantPanel({ issues, assistants, addAssistant, updat
 
         {/* 5 Clickable stat cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
-          {dashStats.map(s=>(
+          {dashStats.map((s, idx)=>(
             <div key={s.label} onClick={()=>handleStatClick(s.val)}
-              className={`stat-card ${s.cls}`}
-              style={{ cursor:'pointer', outline:filterStat===s.val?'3px solid rgba(255,255,255,0.7)':'none', outlineOffset:'2px', transform:filterStat===s.val?'translateY(-3px) scale(1.02)':'' }}>
+              className={`stat-card ${s.cls} stagger-item`}
+              style={{ '--stagger-delay': `${idx * 60}ms`, cursor:'pointer', outline:filterStat===s.val?'3px solid rgba(255,255,255,0.7)':'none', outlineOffset:'2px', transform:filterStat===s.val?'translateY(-3px) scale(1.02)':'' }}>
               <div className="stat-icon">{s.label==='Available'?'🔓':s.label==='Total Issues'?'📌':s.label==='Pending'?'⏳':s.label==='In Progress'?'🔧':'✅'}</div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div className="stat-label">{s.label}</div>

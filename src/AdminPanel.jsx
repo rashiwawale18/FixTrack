@@ -5,12 +5,13 @@ const STATUSES   = ['Pending Review','Accepted','Assigned','In Progress','Resolv
 const CATEGORIES = ['All','Electrical','Plumbing','Mechanical','Electronics','Cleaning']
 const PRIORITIES = ['All','Low','Medium','High']
 
-const LC = { bg:'#e8f5f0', card:'#d4ede6', inp:'#c8e6de', border:'#9ecfbe', dark:'#0e3028', muted:'#3a6858', btn:'#1a2f5e' }
-const DC = { bg:'#f2f4f8', surf:'#ffffff', surf2:'#f0f2f8', border:'#d4daea', text:'#18243a', muted:'#526080' }
+const LC = { bg:'#0a101c', card:'#121a2b', inp:'#1a263d', border:'#2a3a56', dark:'#e6ecff', muted:'#9aaaca', btn:'#3f63b8' }
+const DC = { bg:'#0a101c', surf:'#121a2b', surf2:'#1a263d', border:'#2a3a56', text:'#e6ecff', muted:'#9aaaca' }
 
 function SBadge({ status }) {
   const m = { 'Pending Review':'badge-pending','Accepted':'badge-accepted','Assigned':'badge-assigned','In Progress':'badge-inprogress','Resolved':'badge-resolved','Rejected':'badge-rejected' }
-  return <span className={`badge ${m[status]||'badge-pending'}`}>{status}</span>
+  const live = status === 'Pending Review' || status === 'In Progress'
+  return <span className={`badge ${m[status]||'badge-pending'} ${live ? 'badge-live' : ''}`}>{status}</span>
 }
 function PBadge({ priority }) {
   return <span className={`badge priority-${priority?.toLowerCase()}`}>{priority}</span>
@@ -140,7 +141,7 @@ export default function AdminPanel({ issues, assistants, updateIssue, deleteIssu
       )}
 
       {/* Navy Sidebar */}
-      <aside className="admin-sidebar" style={{ width:'200px', flexShrink:0, display:'flex', flexDirection:'column', padding:'20px 10px', position:'fixed', top:'64px', left:0, height:'calc(100vh - 64px)', zIndex:50, overflowY:'auto', transition:'transform 0.25s ease' }}
+      <aside className="admin-sidebar panel-enter" style={{ width:'200px', flexShrink:0, display:'flex', flexDirection:'column', padding:'20px 10px', position:'fixed', top:'64px', left:0, height:'calc(100vh - 64px)', zIndex:50, overflowY:'auto', transition:'transform 0.25s ease' }}
         ref={el => {
           if (!el) return
           const apply = () => { el.style.transform = window.innerWidth >= 1024 ? 'translateX(0)' : (sidebarOpen ? 'translateX(0)' : 'translateX(-100%)') }
@@ -172,7 +173,7 @@ export default function AdminPanel({ issues, assistants, updateIssue, deleteIssu
       </aside>
 
       {/* Main */}
-      <div style={{ flex:1, minWidth:0, padding:'24px 20px' }} className="lg:ml-[200px]">
+      <div style={{ flex:1, minWidth:0, padding:'24px 20px' }} className="lg:ml-[200px] fade-in">
 
         <div className="flex items-center gap-3 mb-5 lg:hidden">
           <button onClick={()=>setSidebarOpen(true)} style={{ padding:'7px 12px', borderRadius:'8px', background:DC.surf, border:`1px solid ${DC.border}`, color:DC.text, cursor:'pointer', fontWeight:800 }}>☰</button>
@@ -189,10 +190,12 @@ export default function AdminPanel({ issues, assistants, updateIssue, deleteIssu
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
             {issueStats.map(s => {
               const isActive = (s.type==='all'&&fStat==='All'&&fPri==='All') || (s.type==='status'&&fStat===s.val) || (s.type==='priority'&&fPri===s.val)
+              const idx = issueStats.findIndex(x => x.label === s.label)
               return (
                 <div key={s.label} onClick={()=>handleIssueStatClick(s.type,s.val)}
-                  className={`stat-card ${s.cls}`}
-                  style={{ cursor:'pointer', outline:isActive?'3px solid rgba(255,255,255,0.7)':'none', outlineOffset:'2px', transform:isActive?'translateY(-3px) scale(1.02)':'' }}>
+                  className={`stat-card ${s.cls} stagger-item`}
+                  style={{ '--stagger-delay': `${idx * 60}ms`, cursor:'pointer', outline:isActive?'3px solid rgba(255,255,255,0.7)':'none', outlineOffset:'2px', transform:isActive?'translateY(-3px) scale(1.02)':'' }}
+                >
                   <div className="stat-icon">{s.icon}</div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div className="stat-label">{s.label}</div>
@@ -311,10 +314,11 @@ export default function AdminPanel({ issues, assistants, updateIssue, deleteIssu
           <div className="grid grid-cols-3 gap-3 mb-5">
             {astStats.map(s=>{
               const isActive = fAst===s.val
+              const idx = astStats.findIndex(x => x.label === s.label)
               return (
                 <div key={s.label} onClick={()=>handleAstStatClick(s.val)}
-                  className={`stat-card ${s.cls}`}
-                  style={{ cursor:'pointer', outline:isActive?'3px solid rgba(255,255,255,0.7)':'none', outlineOffset:'2px', transform:isActive?'translateY(-3px) scale(1.02)':'' }}>
+                  className={`stat-card ${s.cls} stagger-item`}
+                  style={{ '--stagger-delay': `${idx * 70}ms`, cursor:'pointer', outline:isActive?'3px solid rgba(255,255,255,0.7)':'none', outlineOffset:'2px', transform:isActive?'translateY(-3px) scale(1.02)':'' }}>
                   <div className="stat-icon">👷</div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div className="stat-label">{s.label}</div>
