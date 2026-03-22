@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { signupAssistant, loginAssistant, logoutAssistant, getLoggedInAssistant } from './appwrite.js'
+import { useSidebarLayout } from './useSidebarLayout.js'
 
 const CATEGORIES = ['Electrical','Plumbing','Mechanical','Electronics','Cleaning']
 const STATUSES   = ['Pending Review','Accepted','Assigned','In Progress','Resolved']
@@ -29,18 +30,31 @@ export default function AssistantPanel({ issues, assistants, addAssistant, updat
   const [signupDone, setSignupDone] = useState(false)
   const [signupErr, setSignupErr]   = useState('')
   const [signupLoading, setSignupLoading] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [filterStat, setFilterStat]   = useState('All')
   const [viewModal, setViewModal]     = useState(null)
-  const [checkingSession, setCheckingSession] = useState(true)
+  const {
+    sidebarOpen,
+    setSidebarOpen,
+    isDesktop,
+    closeSidebar,
+    sidebarTransform,
+  } = useSidebarLayout()
 
   useEffect(() => {
+    let cancelled = false
     async function restore() {
-      const asst = await getLoggedInAssistant()
-      if (asst) { setMe(asst); setView('dashboard') }
-      setCheckingSession(false)
+      try {
+        const asst = await getLoggedInAssistant()
+        if (!cancelled && asst) {
+          setMe(asst)
+          setView('dashboard')
+        }
+      } catch {
+        /* ignore — show login */
+      }
     }
     restore()
+    return () => { cancelled = true }
   }, [])
 
   async function handleLogin(e) {
@@ -79,34 +93,8 @@ export default function AssistantPanel({ issues, assistants, addAssistant, updat
     setLoginEmail(''); setLoginPass('')
   }
 
-  // ─── Issue visibility logic ───────────────────────────────────────────────
-  // Assistants see ALL issues in their category (except Rejected)
-  // They can self-accept any Pending Review issue in their dept
-  // Admin can also assign to them regardless
-  const myIssues   = me ? issues.filter(i => i.category === me.category && i.status !== 'Rejected') : []
-
-  // Available = Pending Review issues in their category (not yet accepted by anyone)
-  const available  = myIssues.filter(i => i.status === 'Pending Review').length
-  const inProgress = myIssues.filter(i => i.status === 'In Progress').length
-  const resolved   = myIssues.filter(i => i.status === 'Resolved').length
-  const pending    = myIssues.filter(i => ['Pending Review','Accepted','Assigned'].includes(i.status)).length
-
-  const filteredIssues = filterStat === 'All' ? myIssues : myIssues.filter(i => i.status === filterStat)
-
-  function handleStatClick(val) {
-    setFilterStat(val)
-    setTimeout(()=>document.getElementById('asst-table')?.scrollIntoView({behavior:'smooth',block:'start'}), 100)
-  }
-
   const inp = { background:LC.inp, border:`1.5px solid ${LC.border}`, borderRadius:'10px', padding:'10px 14px', fontSize:'0.875rem', color:LC.dark, width:'100%', fontFamily:'Nunito,sans-serif' }
   const lbl = { fontSize:'0.71rem', fontWeight:800, textTransform:'uppercase', letterSpacing:'0.07em', color:LC.muted, marginBottom:'6px', display:'block' }
-
-  if (checkingSession) return (
-    <div style={{ minHeight:'calc(100vh - 4rem)', background:LC.bg, display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div style={{ width:'36px', height:'36px', borderRadius:'50%', border:'4px solid #d4ccee', borderTop:`4px solid ${LC.btn}`, animation:'spin 0.7s linear infinite' }} />
-      <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
-    </div>
-  )
 
   // ═══════════ LOGIN ═══════════
   if (view==='login') return (
@@ -193,6 +181,19 @@ export default function AssistantPanel({ issues, assistants, addAssistant, updat
     </div>
   )
 
+  // ─── Dashboard only: issue lists & stats (skip on login/signup for faster first paint) ───
+  const myIssues   = me ? issues.filter(i => i.category === me.category && i.status !== 'Rejected') : []
+  const available  = myIssues.filter(i => i.status === 'Pending Review').length
+  const inProgress = myIssues.filter(i => i.status === 'In Progress').length
+  const resolved   = myIssues.filter(i => i.status === 'Resolved').length
+  const pending    = myIssues.filter(i => ['Pending Review','Accepted','Assigned'].includes(i.status)).length
+  const filteredIssues = filterStat === 'All' ? myIssues : myIssues.filter(i => i.status === filterStat)
+
+  function handleStatClick(val) {
+    setFilterStat(val)
+    setTimeout(()=>document.getElementById('asst-table')?.scrollIntoView({behavior:'smooth',block:'start'}), 100)
+  }
+
   // ═══════════ DASHBOARD ═══════════
   const dashStats = [
     { label:'Available',      value:available,        cls:'stat-teal',   val:'Pending Review' },
@@ -203,19 +204,38 @@ export default function AssistantPanel({ issues, assistants, addAssistant, updat
   ]
 
   return (
-    <div style={{ display:'flex', minHeight:'calc(100vh - 4rem)', background:DC.bg, position:'relative' }}>
-      {sidebarOpen && <div onClick={()=>setSidebarOpen(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:40 }} />}
+    <div
+      className="dashboard-shell relative flex flex-col lg:flex-row"
+      style={{ background: DC.bg, minHeight: 'calc(100vh - 4rem)' }}
+    >
+      {sidebarOpen && (
+        <div
+          role="presentation"
+          onClick={closeSidebar}
+          className="fixed inset-0 z-[40] bg-black/50 backdrop-blur-[2px] lg:hidden"
+          aria-hidden="true"
+        />
+      )}
 
-      {/* Indigo Sidebar */}
-      <aside className="asst-sidebar panel-enter" style={{ width:'200px', flexShrink:0, display:'flex', flexDirection:'column', padding:'20px 10px', position:'fixed', top:'64px', left:0, height:'calc(100vh - 64px)', zIndex:50, overflowY:'auto', transition:'transform 0.25s ease' }}
-        ref={el => {
-          if (!el) return
-          const apply = () => { el.style.transform = window.innerWidth >= 1024 ? 'translateX(0)' : (sidebarOpen ? 'translateX(0)' : 'translateX(-100%)') }
-          apply(); window.addEventListener('resize', apply)
-        }}>
+      <aside
+        className="asst-sidebar dashboard-sidebar fixed left-0 top-16 z-[50] flex h-[calc(100vh-4rem)] w-[min(88vw,260px)] max-w-[280px] flex-shrink-0 flex-col overflow-y-auto overflow-x-hidden lg:static lg:top-auto lg:z-auto lg:h-full lg:min-h-0 lg:w-[200px] lg:max-w-none"
+        style={{
+          padding: '20px 10px',
+          ...(isDesktop
+            ? {}
+            : {
+                transform: sidebarTransform,
+                transition: 'transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
+                willChange: 'transform',
+                boxShadow: sidebarOpen ? '8px 0 32px rgba(0,0,0,0.35)' : undefined,
+                WebkitOverflowScrolling: 'touch',
+                pointerEvents: sidebarOpen ? 'auto' : 'none',
+              }),
+        }}
+      >
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 6px', marginBottom:'14px' }}>
           <p style={{ fontSize:'0.68rem', fontWeight:900, textTransform:'uppercase', letterSpacing:'0.1em', color:'#a0a0e8' }}>My Dashboard</p>
-          <button onClick={()=>setSidebarOpen(false)} className="lg:hidden" style={{ background:'none', border:'none', color:'#a0a0e8', cursor:'pointer', fontSize:'1rem' }}>✕</button>
+          <button type="button" onClick={closeSidebar} className="lg:hidden rounded-lg p-1 text-[#a0a0e8] hover:bg-white/10" aria-label="Close menu">✕</button>
         </div>
         <div style={{ borderRadius:'10px', padding:'12px', marginBottom:'12px', background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)' }}>
           <p style={{ fontWeight:900, color:'#fff', fontSize:'0.9rem' }}>{me.name}</p>
@@ -238,10 +258,12 @@ export default function AssistantPanel({ issues, assistants, addAssistant, updat
         </div>
       </aside>
 
-      {/* Main */}
-      <div style={{ flex:1, minWidth:0, padding:'24px 20px' }} className="lg:ml-[200px] fade-in">
+      <div
+        style={{ flex: 1, minWidth: 0, padding: '24px 20px' }}
+        className="fade-in min-h-0 w-full flex-1 lg:min-h-0 lg:overflow-y-auto"
+      >
         <div className="flex items-center gap-3 mb-5 lg:hidden">
-          <button onClick={()=>setSidebarOpen(true)} style={{ padding:'7px 12px', borderRadius:'8px', background:DC.surf, border:`1px solid ${DC.border}`, color:DC.text, cursor:'pointer', fontWeight:800 }}>☰</button>
+          <button type="button" onClick={()=>setSidebarOpen(true)} className="rounded-lg border px-3 py-2 font-extrabold" style={{ background:DC.surf, borderColor:DC.border, color:DC.text }} aria-label="Open menu">☰</button>
           <h1 style={{ fontSize:'1.1rem', fontWeight:900, color:DC.text }}>{me.category} Issues</h1>
         </div>
         <div className="hidden lg:block mb-5">

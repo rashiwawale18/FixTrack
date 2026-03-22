@@ -248,13 +248,23 @@ body {
 
 .panel-enter { animation: slideInPanel 0.28s ease both; }
 
+/* Opacity only — transform on an ancestor breaks position:fixed (sidebar) inside panels */
 @keyframes tabSwitchIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .tab-panel-enter {
-  animation: tabSwitchIn 0.3s ease both;
+  animation: tabSwitchIn 0.28s ease both;
+}
+
+/* Desktop dashboard: fill viewport below nav; scroll only main column */
+@media (min-width: 1024px) {
+  .dashboard-shell {
+    height: calc(100vh - 4rem);
+    max-height: calc(100vh - 4rem);
+    overflow: hidden;
+  }
 }
 
 .stagger-item {

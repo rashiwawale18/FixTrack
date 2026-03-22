@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { adminLogin, adminLogout } from './appwrite.js'
+import { useSidebarLayout } from './useSidebarLayout.js'
 
 const STATUSES   = ['Pending Review','Accepted','Assigned','In Progress','Resolved','Rejected']
 const CATEGORIES = ['All','Electrical','Plumbing','Mechanical','Electronics','Cleaning']
@@ -32,15 +33,13 @@ export default function AdminPanel({ issues, assistants, updateIssue, deleteIssu
   const [assignModal, setAssignModal] = useState(null)
   const [assignName, setAssignName]   = useState('')
   const [viewModal, setViewModal]     = useState(null)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  const approved     = assistants.filter(a => a.status === 'Approved')
-  const filtered     = issues.filter(i =>
-    (fCat  === 'All' || i.category === fCat) &&
-    (fPri  === 'All' || i.priority === fPri) &&
-    (fStat === 'All' || i.status   === fStat)
-  )
-  const filteredAst  = fAst === 'All' ? assistants : assistants.filter(a => a.status === fAst)
+  const {
+    sidebarOpen,
+    setSidebarOpen,
+    isDesktop,
+    closeSidebar,
+    sidebarTransform,
+  } = useSidebarLayout()
 
   async function doLogin(e) {
     e.preventDefault()
@@ -81,20 +80,6 @@ export default function AdminPanel({ issues, assistants, updateIssue, deleteIssu
     setTimeout(()=>document.getElementById('asst-table')?.scrollIntoView({behavior:'smooth',block:'start'}), 100)
   }
 
-  const issueStats = [
-    { label:'Total Issues',  value:issues.length,                                        icon:'📊', cls:'stat-blue',   type:'all',      val:'All'            },
-    { label:'Pending',       value:issues.filter(i=>i.status==='Pending Review').length,  icon:'⏳', cls:'stat-violet', type:'status',   val:'Pending Review' },
-    { label:'High Priority', value:issues.filter(i=>i.priority==='High').length,          icon:'🔴', cls:'stat-red',    type:'priority', val:'High'           },
-    { label:'In Progress',   value:issues.filter(i=>i.status==='In Progress').length,     icon:'🔧', cls:'stat-amber',  type:'status',   val:'In Progress'    },
-    { label:'Resolved',      value:issues.filter(i=>i.status==='Resolved').length,        icon:'✅', cls:'stat-green',  type:'status',   val:'Resolved'       },
-  ]
-
-  const astStats = [
-    { label:'Total',    value:assistants.length,                                   cls:'stat-teal',  val:'All'      },
-    { label:'Approved', value:assistants.filter(a=>a.status==='Approved').length,  cls:'stat-green', val:'Approved' },
-    { label:'Pending',  value:assistants.filter(a=>a.status==='Pending').length,   cls:'stat-amber', val:'Pending'  },
-  ]
-
   // ═══════════ LOGIN ═══════════
   if (!loggedIn) return (
     <div style={{ minHeight:'calc(100vh - 4rem)', background:LC.bg, display:'flex', alignItems:'center', justifyContent:'center', padding:'64px 16px' }}>
@@ -132,27 +117,67 @@ export default function AdminPanel({ issues, assistants, updateIssue, deleteIssu
     </div>
   )
 
+  const approved     = assistants.filter(a => a.status === 'Approved')
+  const filtered     = issues.filter(i =>
+    (fCat  === 'All' || i.category === fCat) &&
+    (fPri  === 'All' || i.priority === fPri) &&
+    (fStat === 'All' || i.status   === fStat)
+  )
+  const filteredAst  = fAst === 'All' ? assistants : assistants.filter(a => a.status === fAst)
+
+  const issueStats = [
+    { label:'Total Issues',  value:issues.length,                                        icon:'📊', cls:'stat-blue',   type:'all',      val:'All'            },
+    { label:'Pending',       value:issues.filter(i=>i.status==='Pending Review').length,  icon:'⏳', cls:'stat-violet', type:'status',   val:'Pending Review' },
+    { label:'High Priority', value:issues.filter(i=>i.priority==='High').length,          icon:'🔴', cls:'stat-red',    type:'priority', val:'High'           },
+    { label:'In Progress',   value:issues.filter(i=>i.status==='In Progress').length,     icon:'🔧', cls:'stat-amber',  type:'status',   val:'In Progress'    },
+    { label:'Resolved',      value:issues.filter(i=>i.status==='Resolved').length,        icon:'✅', cls:'stat-green',  type:'status',   val:'Resolved'       },
+  ]
+
+  const astStats = [
+    { label:'Total',    value:assistants.length,                                   cls:'stat-teal',  val:'All'      },
+    { label:'Approved', value:assistants.filter(a=>a.status==='Approved').length,  cls:'stat-green', val:'Approved' },
+    { label:'Pending',  value:assistants.filter(a=>a.status==='Pending').length,   cls:'stat-amber', val:'Pending'  },
+  ]
+
   // ═══════════ DASHBOARD ═══════════
   return (
-    <div style={{ display:'flex', minHeight:'calc(100vh - 4rem)', background:DC.bg, position:'relative' }}>
+    <div
+      className="dashboard-shell relative flex flex-col lg:flex-row"
+      style={{ background: DC.bg, minHeight: 'calc(100vh - 4rem)' }}
+    >
 
       {sidebarOpen && (
-        <div onClick={()=>setSidebarOpen(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:40 }} />
+        <div
+          role="presentation"
+          onClick={closeSidebar}
+          className="fixed inset-0 z-[40] bg-black/50 backdrop-blur-[2px] lg:hidden"
+          aria-hidden="true"
+        />
       )}
 
-      {/* Navy Sidebar */}
-      <aside className="admin-sidebar panel-enter" style={{ width:'200px', flexShrink:0, display:'flex', flexDirection:'column', padding:'20px 10px', position:'fixed', top:'64px', left:0, height:'calc(100vh - 64px)', zIndex:50, overflowY:'auto', transition:'transform 0.25s ease' }}
-        ref={el => {
-          if (!el) return
-          const apply = () => { el.style.transform = window.innerWidth >= 1024 ? 'translateX(0)' : (sidebarOpen ? 'translateX(0)' : 'translateX(-100%)') }
-          apply(); window.addEventListener('resize', apply)
-        }}>
+      {/* Mobile: fixed drawer. Desktop (lg): static column in flex row — full height, no page scroll to see sidebar */}
+      <aside
+        className="admin-sidebar dashboard-sidebar fixed left-0 top-16 z-[50] flex h-[calc(100vh-4rem)] w-[min(88vw,260px)] max-w-[280px] flex-shrink-0 flex-col overflow-y-auto overflow-x-hidden lg:static lg:top-auto lg:z-auto lg:h-full lg:min-h-0 lg:w-[200px] lg:max-w-none"
+        style={{
+          padding: '20px 10px',
+          ...(isDesktop
+            ? {}
+            : {
+                transform: sidebarTransform,
+                transition: 'transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
+                willChange: 'transform',
+                boxShadow: sidebarOpen ? '8px 0 32px rgba(0,0,0,0.35)' : undefined,
+                WebkitOverflowScrolling: 'touch',
+                pointerEvents: sidebarOpen ? 'auto' : 'none',
+              }),
+        }}
+      >
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 6px', marginBottom:'14px' }}>
           <p style={{ fontSize:'0.68rem', fontWeight:900, textTransform:'uppercase', letterSpacing:'0.1em', color:'#90b8f0' }}>Admin Panel</p>
-          <button onClick={()=>setSidebarOpen(false)} className="lg:hidden" style={{ background:'none', border:'none', color:'#90b8f0', cursor:'pointer', fontSize:'1rem' }}>✕</button>
+          <button type="button" onClick={closeSidebar} className="lg:hidden rounded-lg p-1 text-[#90b8f0] hover:bg-white/10" aria-label="Close menu">✕</button>
         </div>
         {[{key:'issues',icon:'📋',label:'Issues'},{key:'assistants',icon:'👷',label:'Assistants'}].map(n=>(
-          <button key={n.key} onClick={()=>{setTab(n.key);setSidebarOpen(false)}} className={`sidebar-item ${tab===n.key?'active':''}`}>
+          <button key={n.key} type="button" onClick={()=>{setTab(n.key);closeSidebar()}} className={`sidebar-item ${tab===n.key?'active':''}`}>
             <span>{n.icon}</span><span>{n.label}</span>
           </button>
         ))}
@@ -172,11 +197,14 @@ export default function AdminPanel({ issues, assistants, updateIssue, deleteIssu
         </div>
       </aside>
 
-      {/* Main */}
-      <div style={{ flex:1, minWidth:0, padding:'24px 20px' }} className="lg:ml-[200px] fade-in">
+      {/* Main: on desktop, only this column scrolls */}
+      <div
+        style={{ flex: 1, minWidth: 0, padding: '24px 20px' }}
+        className="fade-in min-h-0 w-full flex-1 lg:min-h-0 lg:overflow-y-auto"
+      >
 
         <div className="flex items-center gap-3 mb-5 lg:hidden">
-          <button onClick={()=>setSidebarOpen(true)} style={{ padding:'7px 12px', borderRadius:'8px', background:DC.surf, border:`1px solid ${DC.border}`, color:DC.text, cursor:'pointer', fontWeight:800 }}>☰</button>
+          <button type="button" onClick={()=>setSidebarOpen(true)} className="rounded-lg border px-3 py-2 font-extrabold" style={{ background:DC.surf, borderColor:DC.border, color:DC.text }} aria-label="Open menu">☰</button>
           <h1 style={{ fontSize:'1.1rem', fontWeight:900, color:DC.text }}>{tab==='issues'?'Issue Management':'Assistant Management'}</h1>
         </div>
 
