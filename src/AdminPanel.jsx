@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { adminLogin, adminLogout } from './appwrite.js'
 import { useSidebarLayout } from './useSidebarLayout.js'
+import IssueImage from './IssueImage.jsx'
 
 const STATUSES   = ['Pending Review','Accepted','Assigned','In Progress','Resolved','Rejected']
 const CATEGORIES = ['All','Electrical','Plumbing','Mechanical','Electronics','Cleaning']
@@ -30,8 +31,8 @@ export default function AdminPanel({ issues, assistants, updateIssue, deleteIssu
   const [fPri, setFPri]         = useState('All')
   const [fStat, setFStat]       = useState('All')
   const [fAst, setFAst]         = useState('All')
-  const [assignModal, setAssignModal] = useState(null)
-  const [assignName, setAssignName]   = useState('')
+  const [assignModalIssueId, setAssignModalIssueId] = useState(null)
+  const [assignAssistantId, setAssignAssistantId] = useState('')
   const [viewModal, setViewModal]     = useState(null)
   const {
     sidebarOpen,
@@ -60,12 +61,6 @@ export default function AdminPanel({ issues, assistants, updateIssue, deleteIssu
     setLoggedIn(false)
     setEmail('')
     setPass('')
-  }
-
-  function doAssign() {
-    if (!assignName) return
-    updateIssue(assignModal, { status:'Assigned', assignedTo:assignName })
-    setAssignModal(null); setAssignName('')
   }
 
   function handleIssueStatClick(type, val) {
@@ -118,6 +113,28 @@ export default function AdminPanel({ issues, assistants, updateIssue, deleteIssu
   )
 
   const approved     = assistants.filter(a => a.status === 'Approved')
+  const issueForAssign = assignModalIssueId ? issues.find(i => i.$id === assignModalIssueId) : null
+  const assistantsSameCategory = issueForAssign
+    ? approved.filter(a => a.category === issueForAssign.category).sort((a, b) => a.name.localeCompare(b.name))
+    : []
+  const assistantsOtherCategory = issueForAssign
+    ? approved.filter(a => a.category !== issueForAssign.category).sort((a, b) => a.name.localeCompare(b.name))
+    : []
+
+  async function doAssign() {
+    if (!assignAssistantId) return
+    const a = approved.find(x => x.$id === assignAssistantId)
+    if (!a) return
+    try {
+      await updateIssue(assignModalIssueId, { status: 'Assigned', assignedTo: a.name })
+    } catch {
+      alert('Could not assign. Check your connection and try again.')
+      return
+    }
+    setAssignModalIssueId(null)
+    setAssignAssistantId('')
+  }
+
   const filtered     = issues.filter(i =>
     (fCat  === 'All' || i.category === fCat) &&
     (fPri  === 'All' || i.priority === fPri) &&
@@ -288,7 +305,7 @@ export default function AdminPanel({ issues, assistants, updateIssue, deleteIssu
                             <button onClick={()=>updateIssue(issue.$id,{status:'Accepted'})} className="btn-success">✓</button>
                             <button onClick={()=>updateIssue(issue.$id,{status:'Rejected'})} className="btn-danger">✗</button>
                           </>}
-                          <button onClick={()=>{setAssignModal(issue.$id);setAssignName(issue.assignedTo||'')}} className="btn-accent">Assign</button>
+                          <button onClick={()=>{setAssignModalIssueId(issue.$id);setAssignAssistantId(approved.find(a=>a.name===issue.assignedTo)?.$id??'')}} className="btn-accent">Assign</button>
                           <button onClick={()=>deleteIssue(issue.$id)} className="btn-ghost">🗑</button>
                         </div>
                       </td>
@@ -325,7 +342,7 @@ export default function AdminPanel({ issues, assistants, updateIssue, deleteIssu
                     <button onClick={()=>updateIssue(issue.$id,{status:'Accepted'})} className="btn-success">Accept</button>
                     <button onClick={()=>updateIssue(issue.$id,{status:'Rejected'})} className="btn-danger">Reject</button>
                   </>}
-                  <button onClick={()=>{setAssignModal(issue.$id);setAssignName(issue.assignedTo||'')}} className="btn-accent">Assign</button>
+                  <button onClick={()=>{setAssignModalIssueId(issue.$id);setAssignAssistantId(approved.find(a=>a.name===issue.assignedTo)?.$id??'')}} className="btn-accent">Assign</button>
                   <button onClick={()=>deleteIssue(issue.$id)} className="btn-ghost">🗑</button>
                 </div>
               </div>
@@ -410,19 +427,38 @@ export default function AdminPanel({ issues, assistants, updateIssue, deleteIssu
       </div>
 
       {/* Assign Modal */}
-      {assignModal && (
-        <div className="modal-backdrop" onClick={e=>e.target===e.currentTarget&&setAssignModal(null)}>
+      {assignModalIssueId && (
+        <div className="modal-backdrop" onClick={e=>e.target===e.currentTarget&&setAssignModalIssueId(null)}>
           <div className="modal fade-up">
             <h3 style={{ fontSize:'1.1rem', fontWeight:900, color:DC.text, marginBottom:'4px' }}>Assign Assistant</h3>
-            <p style={{ fontSize:'0.75rem', color:DC.muted, marginBottom:'16px' }}>Assigning to issue in the system.</p>
+            <p style={{ fontSize:'0.75rem', color:DC.muted, marginBottom:'16px', lineHeight:1.5 }}>
+              Pick who owns this case. Assistants in the same category as the issue usually see it in their queue; you can assign across teams when needed.
+            </p>
             <label className="lbl">Choose Assistant</label>
-            <select value={assignName} onChange={e=>setAssignName(e.target.value)} className="inp mb-4">
+            <select value={assignAssistantId} onChange={e=>setAssignAssistantId(e.target.value)} className="inp mb-4">
               <option value="">Select an assistant...</option>
-              {approved.map(a=><option key={a.$id} value={a.name}>{a.name} ({a.category})</option>)}
+              {issueForAssign ? (
+                <>
+                  <optgroup label={`Same category (${issueForAssign.category})`}>
+                    {assistantsSameCategory.map(a => (
+                      <option key={a.$id} value={a.$id}>{a.name} · {a.employeeId}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Other teams">
+                    {assistantsOtherCategory.map(a => (
+                      <option key={a.$id} value={a.$id}>{a.name} ({a.category}) · {a.employeeId}</option>
+                    ))}
+                  </optgroup>
+                </>
+              ) : (
+                [...approved].sort((a, b) => a.name.localeCompare(b.name)).map(a => (
+                  <option key={a.$id} value={a.$id}>{a.name} ({a.category}) · {a.employeeId}</option>
+                ))
+              )}
             </select>
             <div style={{ display:'flex', gap:'10px' }}>
-              <button onClick={doAssign} className="btn-primary" style={{ flex:1, padding:'10px' }}>Assign</button>
-              <button onClick={()=>setAssignModal(null)} className="btn-secondary" style={{ flex:1, padding:'10px' }}>Cancel</button>
+              <button type="button" onClick={doAssign} className="btn-primary" style={{ flex:1, padding:'10px' }}>Assign</button>
+              <button type="button" onClick={()=>setAssignModalIssueId(null)} className="btn-secondary" style={{ flex:1, padding:'10px' }}>Cancel</button>
             </div>
           </div>
         </div>
@@ -445,7 +481,7 @@ export default function AdminPanel({ issues, assistants, updateIssue, deleteIssu
             <div style={{ padding:'24px' }}>
               <div style={{ display:'flex', gap:'20px', marginBottom:'20px' }}>
                 <div style={{ width:'120px', height:'120px', flexShrink:0, borderRadius:'12px', background:DC.surf2, border:`1px solid ${DC.border}`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
-                  {viewModal.imageUrl ? <img src={viewModal.imageUrl} alt="issue" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                  {viewModal.imageUrl ? <IssueImage issue={viewModal} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
                     : <><span style={{ fontSize:'2rem', marginBottom:'4px' }}>🖼️</span><span style={{ fontSize:'0.69rem', color:DC.muted, fontWeight:600 }}>No image</span></>}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
@@ -475,7 +511,11 @@ export default function AdminPanel({ issues, assistants, updateIssue, deleteIssu
               )}
               <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
                 <select value={viewModal.status}
-                  onChange={e=>{ updateIssue(viewModal.$id,{status:e.target.value}); setViewModal(v=>({...v,status:e.target.value})) }}
+                  onChange={e=>{
+                    const s = e.target.value
+                    updateIssue(viewModal.$id, { status: s })
+                    setViewModal(v => ({ ...v, status: s, ...(s === 'Pending Review' ? { assignedTo: '' } : {}) }))
+                  }}
                   style={{ background:DC.surf2, border:`1.5px solid ${DC.border}`, borderRadius:'8px', padding:'7px 12px', fontSize:'0.78rem', color:DC.text, fontFamily:'Nunito,sans-serif', flex:1, minWidth:'130px' }}>
                   {STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
                 </select>
@@ -483,7 +523,7 @@ export default function AdminPanel({ issues, assistants, updateIssue, deleteIssu
                   <button onClick={()=>{ updateIssue(viewModal.$id,{status:'Accepted'}); setViewModal(v=>({...v,status:'Accepted'})) }} className="btn-success">✓ Accept</button>
                   <button onClick={()=>{ updateIssue(viewModal.$id,{status:'Rejected'}); setViewModal(v=>({...v,status:'Rejected'})) }} className="btn-danger">✗ Reject</button>
                 </>}
-                <button onClick={()=>{ setAssignModal(viewModal.$id); setAssignName(viewModal.assignedTo||''); setViewModal(null) }} className="btn-accent">Assign</button>
+                <button onClick={()=>{ setAssignModalIssueId(viewModal.$id); setAssignAssistantId(approved.find(a=>a.name===viewModal.assignedTo)?.$id??''); setViewModal(null) }} className="btn-accent">Assign</button>
                 <button onClick={()=>setViewModal(null)} className="btn-ghost">Close</button>
               </div>
             </div>

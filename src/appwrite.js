@@ -5,7 +5,7 @@ const PROJECT_ID = import.meta.env.VITE_APPWRITE_PROJECT_ID
 const DB_ID      = import.meta.env.VITE_APPWRITE_DB_ID
 const ISSUES_COL = 'issues'
 const ASST_COL   = 'assistants'
-const BUCKET_ID  = import.meta.env.VITE_APPWRITE_BUCKET_ID
+export const BUCKET_ID = import.meta.env.VITE_APPWRITE_BUCKET_ID
 
 const client = new Client().setEndpoint(ENDPOINT).setProject(PROJECT_ID)
 
@@ -32,7 +32,8 @@ export async function submitIssue({ name, role, rollOrId, department, title, loc
   let imageUrl = ''
   if (imageFile) {
     const uploaded = await storage.createFile(BUCKET_ID, ID.unique(), imageFile)
-    imageUrl = storage.getFilePreview(BUCKET_ID, uploaded.$id).toString()
+    const preview = storage.getFilePreview(BUCKET_ID, uploaded.$id, 1600, 1600)
+    imageUrl = preview instanceof URL ? preview.href : String(preview)
   }
   return await databases.createDocument(DB_ID, ISSUES_COL, ID.unique(), {
     name, role, rollOrId, department, title, location,

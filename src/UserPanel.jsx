@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { trackIssues } from './appwrite.js'
+import IssueImage from './IssueImage.jsx'
 
 const DEPARTMENTS = ['CS','IT','AIDS','AIML','EXTC','CS-IOT','ECS']
 const CATEGORIES  = ['Electrical','Plumbing','Mechanical','Electronics','Cleaning']
@@ -279,10 +280,17 @@ export default function UserPanel({ addIssue }) {
                       {trackResults.map(issue => (
                         <div key={issue.$id} className="card p-4 lift-hover anim-pop">
                           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
-                            <div>
-                              <span className="mono text-xs" style={{ color:'var(--muted)' }}>{issue.$id.slice(0,8)}</span>
-                              <p className="font-black text-sm mt-0.5" style={{ color:'var(--text)' }}>{issue.title}</p>
-                              <p className="text-xs mt-0.5" style={{ color:'var(--muted)' }}>{issue.location} · {issue.department} Dept.</p>
+                            <div className="flex gap-3 min-w-0 flex-1">
+                              {issue.imageUrl ? (
+                                <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border" style={{ borderColor:'var(--border)', background:'var(--surface)' }}>
+                                  <IssueImage issue={issue} className="w-full h-full object-cover" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                                </div>
+                              ) : null}
+                              <div className="min-w-0">
+                                <span className="mono text-xs" style={{ color:'var(--muted)' }}>{issue.$id.slice(0,8)}</span>
+                                <p className="font-black text-sm mt-0.5" style={{ color:'var(--text)' }}>{issue.title}</p>
+                                <p className="text-xs mt-0.5" style={{ color:'var(--muted)' }}>{issue.location} · {issue.department} Dept.</p>
+                              </div>
                             </div>
                             <StatusBadge status={issue.status} />
                           </div>

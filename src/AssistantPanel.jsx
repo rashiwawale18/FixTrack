@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { signupAssistant, loginAssistant, logoutAssistant, getLoggedInAssistant } from './appwrite.js'
 import { useSidebarLayout } from './useSidebarLayout.js'
+import { issueVisibleToAssistant } from './issueVisibility.js'
+import IssueImage from './IssueImage.jsx'
 
 const CATEGORIES = ['Electrical','Plumbing','Mechanical','Electronics','Cleaning']
 const STATUSES   = ['Pending Review','Accepted','Assigned','In Progress','Resolved']
@@ -182,11 +184,11 @@ export default function AssistantPanel({ issues, assistants, addAssistant, updat
   )
 
   // ─── Dashboard only: issue lists & stats (skip on login/signup for faster first paint) ───
-  const myIssues   = me ? issues.filter(i => i.category === me.category && i.status !== 'Rejected') : []
-  const available  = myIssues.filter(i => i.status === 'Pending Review').length
-  const inProgress = myIssues.filter(i => i.status === 'In Progress').length
-  const resolved   = myIssues.filter(i => i.status === 'Resolved').length
-  const pending    = myIssues.filter(i => ['Pending Review','Accepted','Assigned'].includes(i.status)).length
+  const myIssues   = me ? issues.filter(i => issueVisibleToAssistant(i, me)) : []
+  const available  = me ? myIssues.filter(i => i.status === 'Pending Review' && !(i.assignedTo || '').trim() && i.category === me.category).length : 0
+  const inProgress = me ? myIssues.filter(i => i.status === 'In Progress' && (i.assignedTo || '').trim() === me.name.trim()).length : 0
+  const resolved   = me ? myIssues.filter(i => i.status === 'Resolved' && (i.assignedTo || '').trim() === me.name.trim()).length : 0
+  const pending    = me ? myIssues.filter(i => ['Pending Review','Accepted','Assigned'].includes(i.status)).length : 0
   const filteredIssues = filterStat === 'All' ? myIssues : myIssues.filter(i => i.status === filterStat)
 
   function handleStatClick(val) {
@@ -407,7 +409,7 @@ export default function AssistantPanel({ issues, assistants, addAssistant, updat
             <div style={{ padding:'24px' }}>
               <div style={{ display:'flex', gap:'18px', marginBottom:'18px' }}>
                 <div style={{ width:'110px', height:'110px', flexShrink:0, borderRadius:'12px', background:DC.surf2, border:`1px solid ${DC.border}`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
-                  {viewModal.imageUrl ? <img src={viewModal.imageUrl} alt="issue" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                  {viewModal.imageUrl ? <IssueImage issue={viewModal} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
                     : <><span style={{ fontSize:'1.8rem', marginBottom:'4px' }}>🖼️</span><span style={{ fontSize:'0.68rem', color:DC.muted, fontWeight:600 }}>No image</span></>}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>

@@ -82,7 +82,10 @@ export default function App() {
   }
 
   async function handleUpdateIssue(id, changes) {
-    const updated = await updateIssueDoc(id, changes)
+    // Reset to the shared team queue: no specific assignee while waiting for pickup
+    const payload =
+      changes.status === 'Pending Review' ? { ...changes, assignedTo: '' } : changes
+    const updated = await updateIssueDoc(id, payload)
     setIssues(p => p.map(i => (i.$id === id ? updated : i)))
   }
 
